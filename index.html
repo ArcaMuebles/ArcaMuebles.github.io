@@ -1,0 +1,578 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Precio (Chile) – Planilla + Semáforo – v7.5.2</title>
+<style>
+  :root{ --bg:#f8fafc; --card:#ffffff; --muted:#64748b; --text:#0f172a; --border:#e2e8f0; --accent:#111827; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:linear-gradient(#fff, var(--bg)); color:var(--text); font:14px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial; }
+  .container{ max-width:1100px; margin:24px auto; padding:0 16px; }
+  .header{ display:flex; gap:12px; align-items:center; }
+  .badge{ border:1px solid var(--border); border-radius:999px; padding:6px 10px; font-size:12px; color:#0f172a; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h3{ margin:0 0 8px; font-size:16px; }
+  .card .content{ padding:16px; }
+  .grid{ display:grid; gap:16px; }
+  .grid.cols-2{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .grid.cols-3{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+  @media (max-width: 860px){ .grid.cols-2, .grid.cols-3 { grid-template-columns:1fr; } }
+  label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+  input, select, button{ font:inherit; }
+  input, select{ width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#fff; }
+  .row{ display:flex; gap:8px; align-items:center; justify-content:space-between; }
+  .muted{ color:var(--muted); font-size:12px; }
+  .btn{ padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  .btn.primary{ background:#111827; color:#fff; border-color:#0b1220; }
+  .btn.active{ background:#111827; color:#fff; border-color:#0b1220; }
+  .price{ font-size:28px; font-weight:700; }
+  .kpi{ border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+  .kpi .label{ font-size:12px; color:var(--muted); }
+  .kpi .value{ font-size:16px; font-weight:600; }
+  .warn{ background:#fef3c7; color:#92400e; padding:8px 10px; border-radius:10px; font-size:13px; }
+  .error{ background:#fee2e2; color:#991b1b; padding:10px 12px; border-radius:10px; }
+  .switch{ appearance:none; width:42px; height:24px; background:#e5e7eb; border-radius:999px; position:relative; cursor:pointer; outline:none; }
+  .switch:checked{ background:#16a34a; }
+  .switch:before{ content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch:checked:before{ transform:translateX(18px); }
+  .tag{ background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:4px 8px; border-radius:999px; font-size:12px; }
+  .pill{ display:inline-flex; align-items:center; gap:8px; border:1px solid; padding:4px 10px; border-radius:999px; font-size:12px; }
+  .pill .dot{ width:8px; height:8px; border-radius:50%; }
+  .pill.good{ background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+  .pill.good .dot{ background:#10b981; }
+  .pill.medium{ background:#fffbeb; color:#92400e; border-color:#fde68a; }
+  .pill.medium .dot{ background:#f59e0b; }
+  .pill.low{ background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+  .pill.low .dot{ background:#ef4444; }
+  hr.div{ border:none; border-top:1px dashed var(--border); margin:4px 0 12px; }
+  .actions{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="background:#0f172a;color:#fff;border-radius:14px;padding:10px;display:flex;align-items:center;justify-content:center;width:40px;height:40px;">💰</div>
+      <div>
+        <h1 style="margin:0;font-size:22px;">Calculadora de Precio (Chile) – Planilla + Semáforo</h1>
+        <div class="muted">IVA <b>fijo 19%</b>. Modo planilla con <b>crédito de IVA</b> en comisiones y logística. Semáforo de rentabilidad y márgenes.</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <div class="badge">Medio: <span id="badge-medio">Falabella</span></div>
+        <span id="badge-planilla" class="tag">Modo planilla activo</span>
+        <button class="btn" id="btn-reset">Reset a 0</button>
+        <button class="btn primary" id="btn-copiar">Copiar desglose</button>
+        <button class="btn" id="btn-descargar">Descargar .txt</button>
+      </div>
+    </div>
+
+    <div class="grid cols-3" style="margin-top:16px;">
+      <div class="card" style="grid-column: span 2;">
+        <div class="content">
+          <h3>Entradas</h3>
+          <div class="grid cols-2">
+            <div style="grid-column:1/-1;">
+              <label>Medio / Canal</label>
+              <select id="canal">
+                <option selected>Falabella</option>
+                <option>Paris</option>
+                <option>Ripley</option>
+                <option>Mercado Libre</option>
+                <option>Sodimac</option>
+                <option>Lider</option>
+                <option>Shopify</option>
+              </select>
+            </div>
+
+            <div class="row" style="grid-column:1/-1;border:1px solid var(--border);border-radius:12px;padding:10px;">
+              <div class="row" style="gap:12px;">
+                <input type="checkbox" id="modo-planilla" class="switch" checked>
+                <label for="modo-planilla" style="margin:0;">Modo planilla (con crédito IVA)</label>
+              </div>
+              <div class="muted">Comisión % sobre precio con IVA + crédito fiscal de IVA en comisiones y logística.</div>
+            </div>
+
+            <div class="grid cols-2" style="grid-column:1/-1;">
+              <div class="row" style="border:1px solid var(--border);border-radius:12px;padding:10px;">
+                <label for="credito-com" style="margin:0;">Crédito IVA comisiones</label>
+                <input type="checkbox" id="credito-com" class="switch" checked>
+              </div>
+              <div class="row" style="border:1px solid var(--border);border-radius:12px;padding:10px;">
+                <label for="credito-log" style="margin:0;">Crédito IVA logística</label>
+                <input type="checkbox" id="credito-log" class="switch" checked>
+              </div>
+            </div>
+
+            <div>
+              <label class="muted">Costo del producto ingresado</label>
+              <select id="tipo-costo" style="width:180px;margin-bottom:6px;">
+                <option value="neto" selected>Neto (sin IVA)</option>
+                <option value="bruto">Bruto (con IVA)</option>
+              </select>
+              <label for="costo">Costo del producto (<span id="lbl-costo-kind">sin IVA</span>)</label>
+              <input type="number" id="costo" value="0" min="0" inputmode="decimal" placeholder="Ej: 115000" />
+            </div>
+
+            <div>
+              <label class="muted">Costo logístico ingresado</label>
+              <select id="tipo-log" style="width:180px;margin-bottom:6px;">
+                <option value="bruto" selected>Bruto (con IVA)</option>
+                <option value="neto">Neto (sin IVA)</option>
+              </select>
+              <label for="logistica">Costo logístico ($)</label>
+              <input type="number" id="logistica" value="0" min="0" inputmode="decimal" placeholder="Ej: 14990"/>
+            </div>
+
+            <div>
+              <label for="otrosfijos">Otros costos fijos ($)</label>
+              <input type="number" id="otrosfijos" value="0" min="0" inputmode="decimal" placeholder="0"/>
+            </div>
+
+            <div>
+              <label for="ganancia">Ganancia neta deseada ($) <span class="muted">(después de IVA y comisiones)</span></label>
+              <input type="number" id="ganancia" value="0" min="0" inputmode="decimal" placeholder="Ej: 50000"/>
+            </div>
+
+            <div style="grid-column:1/-1;"><hr class="div"></div>
+
+            <div>
+              <label for="pago">Comisión pago (%)</label>
+              <input type="number" id="pago" value="0" min="0" inputmode="decimal" placeholder="0"/>
+            </div>
+            <div>
+              <label for="mkt">Comisión marketplace (%)</label>
+              <input type="number" id="mkt" value="0" min="0" inputmode="decimal" placeholder="0"/>
+            </div>
+
+            <div>
+              <label for="otras">Otras comisiones asociadas (%)</label>
+              <input type="number" id="otras" value="0" min="0" inputmode="decimal" placeholder="0"/>
+            </div>
+            <div>
+              <div class="kpi">
+                <div class="label">IVA</div>
+                <div class="value">19% fijo</div>
+              </div>
+            </div>
+
+            <div class="grid cols-2" style="grid-column:1/-1;border:1px solid var(--border);border-radius:12px;padding:10px;">
+              <div>
+                <label for="umbralMedio">Umbral amarillo (≥ %)</label>
+                <input type="number" id="umbralMedio" value="20" min="0" inputmode="decimal" />
+              </div>
+              <div>
+                <label for="umbralBueno">Umbral verde (≥ %)</label>
+                <input type="number" id="umbralBueno" value="30" min="0" inputmode="decimal" />
+              </div>
+              <div>
+                <label for="objMargen">Objetivo margen final (%)</label>
+                <input type="number" id="objMargen" value="30" min="0" inputmode="decimal" />
+              </div>
+              <div>
+                <label>Redondeo del precio</label>
+                <select id="redondeo">
+                  <option value="none" selected>Sin redondeo</option>
+                  <option value="ceil10">Hacia arriba a múltiplo de 10</option>
+                  <option value="ceil100">Hacia arriba a múltiplo de 100</option>
+                  <option value="ceil1000">Hacia arriba a múltiplo de 1000</option>
+                  <option value="990">Psicológico …990 (hacia arriba)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="grid-column:1/-1;border:1px solid var(--border);border-radius:12px;padding:10px;">
+              <div class="row" style="gap:12px;">
+                <input type="checkbox" id="asegurar" class="switch" checked>
+                <label for="asegurar" style="margin:0;">Asegurar meta al redondear</label>
+              </div>
+              <div class="muted">Ajustará hacia arriba para no perder la meta.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="content">
+          <h3>Precio a cobrar</h3>
+          <div class="row" style="align-items:center; gap:10px;">
+            <div id="precio-final" class="price">$0</div>
+            <div id="pill" class="pill low"><span class="dot"></span><span id="pill-text">Rentabilidad: —</span></div>
+          </div>
+          <div class="muted">Medio: <span id="medio-out">Falabella</span> · Incluye IVA 19% y comisiones totales <span id="tot-fee">0%</span></div>
+          <div id="aviso" style="margin-top:8px;"></div>
+
+          <div class="actions">
+            <button class="btn" data-t="30" id="btn-aplicar-30">Aplicar 30%</button>
+            <button class="btn" data-t="25" id="btn-aplicar-25">25%</button>
+            <button class="btn" data-t="20" id="btn-aplicar-20">20%</button>
+            <button class="btn" data-t="15" id="btn-aplicar-15">15%</button>
+          </div>
+
+          <div class="row" style="margin-top:8px;border:1px solid var(--border);border-radius:12px;padding:10px;">
+            <div class="row" style="gap:12px;">
+              <input type="checkbox" id="bloq" class="switch">
+              <label for="bloq" style="margin:0;">Bloquear precio actual</label>
+            </div>
+            <div class="muted">Precio fijo: <span id="precio-fijo-text">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="content">
+        <h3>Desglose</h3>
+        <div id="error-global" class="error" style="display:none;"></div>
+        <div class="grid cols-3" id="desglose"></div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
+        <details>
+          <summary><b>Ver fórmula</b></summary>
+          <p><b>Precio objetivo (margen final t%)</b>, modo planilla: <code>P = (Costo_neto + Otros_fijos + L_eff) / ( A - t )</code>, con <code>A = 1/(1+IVA) − (crédito_comisiones ? fee/(1+IVA) : fee)</code> y <code>L_eff = (crédito_log ? Logística_bruta/(1+IVA) : Logística_bruta)</code>.</p>
+          <p>No se considera crédito de IVA del <b>costo del producto</b> (solo de comisiones/logística). El IVA incluido en costo producto se muestra solo como referencia cuando ingresas un valor <b>bruto</b>.</p>
+        </details>
+      </div>
+    </div>
+
+    <footer class="muted" style="margin-top:12px;">Hecho con ❤ para Arca Muebles. IVA 19% fijo.</footer>
+  </div>
+
+<script>
+  const $ = (id)=>document.getElementById(id);
+  const CLP = new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0});
+  const IVA_RATE = 0.19;
+
+  function ceilTo(price, step){ return Math.ceil(price/step)*step; }
+  function applyRoundingUp(price, mode){
+    if(mode==="none") return price;
+    if(mode==="ceil10") return ceilTo(price,10);
+    if(mode==="ceil100") return ceilTo(price,100);
+    if(mode==="ceil1000") return ceilTo(price,1000);
+    if(mode==="990"){
+      const thousands = Math.ceil((price+10)/1000);
+      return thousands*1000 - 10;
+    }
+    return price;
+  }
+
+  // Track quick-target active
+  let quickActive = null; // 30|25|20|15|null
+  function setQuickActive(t){
+    quickActive = t;
+    ["btn-aplicar-30","btn-aplicar-25","btn-aplicar-20","btn-aplicar-15"].forEach(id=>{
+      const el = $(id); if(!el) return;
+      if (parseInt(el.dataset.t,10) === t) el.classList.add("active");
+      else el.classList.remove("active");
+    });
+  }
+
+  function gatherInputs(){
+    return {
+      canal: $("canal").value,
+      modoPlanilla: $("modo-planilla").checked,
+      creditoCom: $("credito-com").checked,
+      creditoLog: $("credito-log").checked,
+      tipoLog: $("tipo-log").value,
+      tipoCosto: $("tipo-costo").value,
+      costoIngresado: +$("costo").value || 0,
+      logistica: +$("logistica").value || 0,
+      otrosFijos: +$("otrosfijos").value || 0,
+      ganancia: +$("ganancia").value || 0,
+      feePago: (+$("pago").value || 0)/100,
+      feeMkt: (+$("mkt").value || 0)/100,
+      feeOtras: (+$("otras").value || 0)/100,
+      redondeo: $("redondeo").value,
+      asegurarMeta: $("asegurar").checked,
+      umbralMedio: (+$("umbralMedio").value || 0)/100,
+      umbralBueno: (+$("umbralBueno").value || 0)/100,
+      objetivoMargenFinal: (+$("objMargen").value || 0)/100,
+      bloquearPrecio: $("bloq").checked
+    };
+  }
+
+  let precioFijo = null;
+
+  function calc(){
+    const inp = gatherInputs();
+    $("lbl-costo-kind").textContent = inp.tipoCosto === "bruto" ? "con IVA" : "sin IVA";
+    $("badge-medio").textContent = inp.canal;
+    $("medio-out").textContent = inp.canal;
+    $("badge-planilla").style.display = inp.modoPlanilla ? "inline-block" : "none";
+
+    // Costos normalizados
+    const costoNeto = inp.tipoCosto === "bruto" ? Math.max(0, inp.costoIngresado)/(1+IVA_RATE) : Math.max(0, inp.costoIngresado);
+    const costoBrutoProducto = inp.tipoCosto === "bruto" ? Math.max(0, inp.costoIngresado) : Math.max(0, inp.costoIngresado) * (1 + IVA_RATE);
+    const ivaCreditoCostoProducto = inp.tipoCosto === "bruto" ? (costoBrutoProducto - costoNeto) : 0;
+    const costoBruto = costoNeto * (1 + IVA_RATE);
+    const ivaIncluidoCostoProducto = inp.tipoCosto === "bruto" ? (costoBruto - costoNeto) : 0; // solo referencia
+
+    const costoLogBruto = inp.tipoLog === "bruto" ? Math.max(0, inp.logistica) : Math.max(0, inp.logistica) * (1 + IVA_RATE);
+    const ivaCreditoLogistica = inp.creditoLog ? (costoLogBruto * IVA_RATE) / (1 + IVA_RATE) : 0;
+
+    const feeRate = Math.max(0,inp.feePago) + Math.max(0,inp.feeMkt) + Math.max(0,inp.feeOtras);
+    const base = Math.max(0,costoNeto) + Math.max(0,inp.otrosFijos);
+    const objetivoPlanilla = base + Math.max(0, inp.ganancia);
+
+    let A=0, A_planilla=0, L_eff=0;
+    if (inp.modoPlanilla){
+      A_planilla = (1/(1+IVA_RATE)) - (inp.creditoCom ? (feeRate/(1+IVA_RATE)) : feeRate);
+      A = A_planilla;
+      L_eff = inp.creditoLog ? (costoLogBruto/(1+IVA_RATE)) : costoLogBruto;
+    } else {
+      A = (1 - feeRate) - IVA_RATE/(1+IVA_RATE);
+    }
+
+    // Precio base
+    let precioBase=0;
+    if (inp.modoPlanilla){
+      precioBase = (objetivoPlanilla + L_eff) / A;
+    } else {
+      const objetivoClasico = base + Math.max(0, inp.ganancia) + Math.max(0, inp.logistica);
+      precioBase = objetivoClasico / A;
+    }
+
+    // Redondeo
+    let precioFinal = applyRoundingUp(precioBase, inp.redondeo);
+    if (!inp.asegurarMeta && precioFinal < precioBase){
+      precioFinal = applyRoundingUp(precioBase - 1, inp.redondeo);
+    }
+    if (inp.asegurarMeta && precioFinal < precioBase){
+      if (inp.redondeo === "990"){
+        const thousands = Math.ceil((precioBase + 10)/1000) + 1;
+        precioFinal = thousands*1000 - 10;
+      } else if (inp.redondeo.startsWith("ceil")){
+        const step = inp.redondeo === "ceil10" ? 10 : (inp.redondeo === "ceil100" ? 100 : 1000);
+        precioFinal = ceilTo(precioBase + step, step);
+      }
+    }
+
+    // Si bloquear precio está activo, congelamos
+    if (inp.bloquearPrecio){
+      if (precioFijo == null) precioFijo = precioFinal;
+      precioFinal = precioFijo;
+      $("precio-fijo-text").textContent = CLP.format(Math.round(precioFijo));
+    } else {
+      precioFijo = null;
+      $("precio-fijo-text").textContent = "—";
+    }
+
+    // Desglose con precioFinal
+    const precioNeto = precioFinal / (1 + IVA_RATE);
+    const ivaDebito = precioFinal - precioNeto;
+
+    const comisionesBrutas = precioFinal * feeRate;
+    const comPago = precioFinal * inp.feePago;
+    const comMkt = precioFinal * inp.feeMkt;
+    const comOtras = precioFinal * inp.feeOtras;
+
+    const ivaCreditoComisiones = inp.creditoCom ? (comisionesBrutas * IVA_RATE) / (1 + IVA_RATE) : 0;
+
+    // Payout del canal (depósito)
+    const transferenciaCanal = precioFinal - comisionesBrutas - costoLogBruto;
+
+    let ingresoNetoFinal = 0;
+    if (inp.modoPlanilla){
+      const ivaCreditoTotal = ivaCreditoComisiones + ivaCreditoLogistica;
+      ingresoNetoFinal = precioFinal - comisionesBrutas - costoLogBruto - (ivaDebito - ivaCreditoTotal);
+    } else {
+      ingresoNetoFinal = precioFinal - comisionesBrutas - ivaDebito;
+    }
+
+    const gananciaNetaReal = ingresoNetoFinal - base;
+    const margenNeto = precioNeto > 0 ? gananciaNetaReal / precioNeto : 0;
+    const margenFinal = precioFinal > 0 ? gananciaNetaReal / precioFinal : 0;
+
+    // Semáforo con margen FINAL
+    let estado="Bajo", pillClass="pill low";
+    if (margenFinal >= inp.umbralBueno){ estado="Bueno"; pillClass="pill good"; }
+    else if (margenFinal >= inp.umbralMedio){ estado="Medio"; pillClass="pill medium"; }
+    $("pill").className = pillClass;
+    $("pill-text").textContent = `Rentabilidad: ${estado} (${(margenFinal*100).toFixed(1)}%)`;
+    $("tot-fee").textContent = (feeRate*100).toFixed(2) + "%";
+    $("precio-final").textContent = CLP.format(Math.round(precioFinal));
+
+    // Función precio objetivo para t (margen final) – independiente de ganancia deseada
+    function computePrecioObjetivo(t){
+      let baseP = null;
+      if (inp.modoPlanilla){
+        const denom = A_planilla - t;
+        if (denom > 0) baseP = (base + L_eff) / denom; // base SÓLO costos + otros fijos
+      } else {
+        const A_classic = (1 - feeRate) - IVA_RATE/(1+IVA_RATE);
+        const costosClasicos = base + (inp.tipoLog==="bruto" ? Math.max(0, inp.logistica) : Math.max(0, inp.logistica)*(1+IVA_RATE));
+        const denom = A_classic - t;
+        if (denom > 0) baseP = costosClasicos / denom;
+      }
+      if (baseP && isFinite(baseP)){
+        return applyRoundingUp(baseP, inp.redondeo);
+      }
+      return null;
+    }
+
+    // KPIs
+    
+const cont = $("desglose");
+cont.innerHTML = "";
+function kpi(label, value){
+  const div = document.createElement("div");
+  div.className = "kpi";
+  const l = document.createElement("div"); l.className = "label"; l.textContent = label;
+  const v = document.createElement("div"); v.className = "value"; v.textContent = value;
+  div.appendChild(l); div.appendChild(v);
+  return div;
+}
+function sep(){
+  const d = document.createElement("div");
+  d.style.gridColumn = "1 / -1";
+  d.innerHTML = '<hr class="div">';
+  return d;
+}
+
+const t = inp.objetivoMargenFinal;
+const precioObjetivo = computePrecioObjetivo(t);
+
+// Grupo 1
+cont.append(
+  kpi("Costo producto", CLP.format(Math.round(costoNeto))),
+  kpi("Precio sin IVA", CLP.format(Math.round(precioNeto))),
+  kpi("Precio objetivo con IVA", precioObjetivo ? CLP.format(Math.round(precioObjetivo)) : "—"),
+);
+cont.append(sep());
+
+// Grupo 2
+cont.append(
+  kpi("Comisión marketplace", CLP.format(Math.round(comMkt))),
+  kpi("Comisiones de pago", CLP.format(Math.round(comPago))),
+  kpi("Otras comisiones", CLP.format(Math.round(comOtras))),
+);
+cont.append(sep());
+
+// Grupo 3
+cont.append(
+  kpi("Costo logístico", CLP.format(Math.round(costoLogBruto))),
+  kpi("Comisiones + logística", CLP.format(Math.round(comisionesBrutas + costoLogBruto))),
+);
+cont.append(sep());
+
+// Grupo 4 - Créditos IVA
+cont.append(
+  kpi("IVA crédito comisiones", CLP.format(Math.round(ivaCreditoComisiones))),
+  kpi("IVA crédito logística", CLP.format(Math.round(ivaCreditoLogistica))),
+  kpi("IVA crédito costo producto", CLP.format(Math.round(ivaCreditoCostoProducto))),
+);
+cont.append(sep());
+
+// Grupo 5 - Resultados principales
+cont.append(
+  kpi("Transferencia del canal", CLP.format(Math.round(transferenciaCanal))),
+  kpi("Ingreso neto final", CLP.format(Math.round(ingresoNetoFinal))),
+  kpi("Ganancia real", CLP.format(Math.round(gananciaNetaReal))),
+);
+cont.append(sep());
+
+// Grupo 6 - Márgenes y objetivo
+cont.append(
+  kpi("Margen neto", (margenNeto*100).toFixed(2) + "%"),
+  kpi("Margen final", (margenFinal*100).toFixed(2) + "%"),
+  kpi("Objetivo de margen", (t*100).toFixed(0) + "%"),
+  kpi("Precio objetivo final", precioObjetivo ? CLP.format(Math.round(precioObjetivo)) : "—"),
+);
+// Avisos
+    const aviso = $("aviso"); aviso.innerHTML = "";
+    if (A <= 0){
+      aviso.innerHTML = '<div class="warn">Combinación inválida de IVA+comisiones. Reduce el % de comisiones.</div>';
+    }
+
+    // Guardar state y función objetivo
+    window.__state = { inp, base, A_planilla, L_eff, computePrecioObjetivo };
+  }
+
+  function aplicarObjetivoCon(tPct){
+    const st = window.__state;
+    if(!st){ alert("Calcula primero."); return; }
+    const t = (tPct / 100);
+    const price = st.computePrecioObjetivo(t);
+    if(!price){ alert("No se pudo calcular un precio objetivo con esos parámetros."); return; }
+    const nuevaGanancia = Math.max(0, Math.round(t * price));
+    $("ganancia").value = nuevaGanancia;
+    $("objMargen").value = String(tPct);
+    setQuickActive(tPct);
+    calc();
+  }
+
+  function buildTexto(){
+    const st = window.__state; if(!st) return "";
+    const inp = st.inp;
+    return [
+      "— Calculadora de Precio —",
+      `Medio: ${inp.canal}`,
+      `Modo planilla: ${inp.modoPlanilla ? "Sí" : "No"}`,
+      `Costo ingresado (${inp.tipoCosto === "bruto" ? "bruto (con IVA)" : "neto (sin IVA)"}): ${CLP.format(Math.round(inp.costoIngresado))}`,
+      `Costo logístico (${inp.tipoLog==="bruto" ? "bruto" : "neto"}): ${CLP.format(Math.round(inp.logistica))}`,
+      `Ganancia neta deseada: ${CLP.format(Math.round(inp.ganancia))}`,
+      `Comisiones totales: ${((Math.max(0,inp.feePago)+Math.max(0,inp.feeMkt)+Math.max(0,inp.feeOtras))*100).toFixed(2)}%`,
+      `Precio final con IVA: ${document.getElementById("precio-final").textContent}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  async function copiar(){
+    const texto = buildTexto();
+    try{ await navigator.clipboard.writeText(texto); alert("Desglose copiado ✂️"); }catch(e){ console.error(e); }
+  }
+
+  function descargar(){
+    const texto = buildTexto();
+    const blob = new Blob([texto], {type:"text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "desglose_calculadora_planilla_semaforo_v7_4.txt";
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }
+
+  // Eventos
+  ["canal","modo-planilla","credito-com","credito-log","tipo-log","tipo-costo","costo","logistica","otrosfijos","ganancia","pago","mkt","otras","redondeo","asegurar","umbralMedio","umbralBueno","objMargen","bloq"].forEach(id=>{
+    const el = $(id);
+    const evt = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(evt, calc);
+  });
+  $("btn-reset").addEventListener("click", ()=>{
+    $("canal").value = "Falabella";
+    $("modo-planilla").checked = true;
+    $("credito-com").checked = true;
+    $("credito-log").checked = true;
+    $("tipo-log").value = "bruto";
+    $("tipo-costo").value = "neto";
+    $("lbl-costo-kind").textContent = "sin IVA";
+    $("costo").value = "0";
+    $("logistica").value = "0";
+    $("otrosfijos").value = "0";
+    $("ganancia").value = "0";
+    $("pago").value = "0";
+    $("mkt").value = "0";
+    $("otras").value = "0";
+    $("umbralMedio").value = "20";
+    $("umbralBueno").value = "30";
+    $("objMargen").value = "30";
+    $("redondeo").value = "none";
+    $("asegurar").checked = true;
+    $("bloq").checked = false;
+    setQuickActive(null);
+    calc();
+  });
+
+  $("btn-copiar").addEventListener("click", copiar);
+  $("btn-descargar").addEventListener("click", descargar);
+  ["btn-aplicar-30","btn-aplicar-25","btn-aplicar-20","btn-aplicar-15"].forEach(id=>{
+    const el = $(id); if(el) el.addEventListener("click", (e)=>{
+      const t = +e.currentTarget.getAttribute("data-t"); aplicarObjetivoCon(t);
+    });
+  });
+
+  // Primer render
+  calc();
+</script>
+</body>
+</html>
